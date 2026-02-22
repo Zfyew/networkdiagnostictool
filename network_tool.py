@@ -1,5 +1,5 @@
 # Network Diagnostic Tool
-# v3: added traceroute
+# v4: added port scanner
 
 import subprocess
 import platform
@@ -49,15 +49,45 @@ def traceroute(host):
         print(result.stderr)
         print("[-] Traceroute failed.")
 
+def port_scan(host):
+    print(f"\n[*] Scanning common ports on {host}...\n")
+    common_ports = {
+        21: "FTP",
+        22: "SSH",
+        23: "Telnet",
+        25: "SMTP",
+        53: "DNS",
+        80: "HTTP",
+        110: "POP3",
+        143: "IMAP",
+        443: "HTTPS",
+        3389: "RDP"
+    }
+    try:
+        ip = socket.gethostbyname(host)
+        print(f"[*] Scanning {ip}...\n")
+        for port, service in common_ports.items():
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(1)
+            result = sock.connect_ex((ip, port))
+            if result == 0:
+                print(f"    [+] Port {port} ({service}) is OPEN")
+            else:
+                print(f"    [-] Port {port} ({service}) is closed")
+            sock.close()
+    except socket.gaierror:
+        print(f"[-] Could not resolve {host}.")
+
 print("\n==============================")
 print("   NETWORK DIAGNOSTIC TOOL   ")
 print("==============================")
 print("1. Ping")
 print("2. DNS Lookup")
 print("3. Traceroute")
+print("4. Port Scanner")
 print("==============================")
 
-choice = input("\nSelect option (1-3): ")
+choice = input("\nSelect option (1-4): ")
 host = input("Enter host (e.g. google.com): ")
 
 if choice == "1":
@@ -66,5 +96,7 @@ elif choice == "2":
     dns_lookup(host)
 elif choice == "3":
     traceroute(host)
+elif choice == "4":
+    port_scan(host)
 else:
     print("[-] Invalid option.")
