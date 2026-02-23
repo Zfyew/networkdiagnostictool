@@ -1,53 +1,66 @@
 # Network Diagnostic Tool
-# v5: single menu that loops so you can run multiple checks without restarting
+# v6: cleaner output, better error handling throughout
 
 import subprocess
 import platform
 import socket
 
+# separator line to keep output readable between checks
+DIVIDER = "\n" + "=" * 32
+
 def ping(host):
     print(f"\n[*] Pinging {host}...\n")
     flag = "-n" if platform.system().lower() == "windows" else "-c"
-    result = subprocess.run(
-        ["ping", flag, "4", host],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-    if result.returncode == 0:
-        print(result.stdout)
-        print("[+] Host is reachable.")
-    else:
-        print(result.stderr)
-        print("[-] Host is unreachable.")
+    try:
+        result = subprocess.run(
+            ["ping", flag, "4", host],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=15
+        )
+        if result.returncode == 0:
+            print(result.stdout)
+            print("[+] Host is reachable.")
+        else:
+            print("[-] Host is unreachable or did not respond.")
+    except subprocess.TimeoutExpired:
+        print("[-] Ping timed out.")
+    except Exception as e:
+        print(f"[-] Something went wrong: {e}")
 
 def dns_lookup(host):
-    print(f"\n[*] Running DNS lookup for {host}...\n")
+    print(f"\n[*] DNS lookup for {host}...\n")
     try:
         ip = socket.gethostbyname(host)
-        print(f"[+] {host} resolved to {ip}")
+        print(f"[+] {host} -> {ip}")
         try:
             reverse = socket.gethostbyaddr(ip)
-            print(f"[+] Reverse lookup: {reverse[0]}")
+            print(f"[+] Reverse: {reverse[0]}")
         except socket.herror:
             print("[-] Reverse lookup failed.")
     except socket.gaierror:
         print(f"[-] Could not resolve {host}. Check the hostname.")
 
 def traceroute(host):
-    print(f"\n[*] Running traceroute to {host}...\n")
+    print(f"\n[*] Traceroute to {host}...\n")
     command = ["tracert", host] if platform.system().lower() == "windows" else ["traceroute", host]
-    result = subprocess.run(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-    if result.returncode == 0:
-        print(result.stdout)
-    else:
-        print(result.stderr)
-        print("[-] Traceroute failed.")
+    try:
+        result = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=60
+        )
+        if result.returncode == 0:
+            print(result.stdout)
+        else:
+            print("[-] Traceroute failed.")
+    except subprocess.TimeoutExpired:
+        print("[-] Traceroute timed out.")
+    except Exception as e:
+        print(f"[-] Something went wrong: {e}")
 
 def port_scan(host):
     print(f"\n[*] Scanning common ports on {host}...\n")
@@ -65,42 +78,45 @@ def port_scan(host):
     }
     try:
         ip = socket.gethostbyname(host)
-        print(f"[*] Scanning {ip}...\n")
+        print(f"[*] Target: {ip}\n")
         for port, service in common_ports.items():
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(1)
             result = sock.connect_ex((ip, port))
-            if result == 0:
-                print(f"    [+] Port {port} ({service}) is OPEN")
-            else:
-                print(f"    [-] Port {port} ({service}) is closed")
+            status = "OPEN" if result == 0 else "closed"
+            tag = "[+]" if result == 0 else "[-]"
+            print(f"    {tag} {port:<6} {service:<10} {status}")
             sock.close()
     except socket.gaierror:
         print(f"[-] Could not resolve {host}.")
+    except Exception as e:
+        print(f"[-] Something went wrong: {e}")
 
 def show_menu():
-    print("\n==============================")
-    print("   NETWORK DIAGNOSTIC TOOL   ")
-    print("==============================")
-    print("1. Ping")
-    print("2. DNS Lookup")
-    print("3. Traceroute")
-    print("4. Port Scanner")
-    print("5. Exit")
-    print("==============================")
+    print(DIVIDER)
+    print("     NETWORK DIAGNOSTIC TOOL")
+    print(DIVIDER)
+    print("  1. Ping")
+    print("  2. DNS Lookup")
+    print("  3. Traceroute")
+    print("  4. Port Scanner")
+    print("  5. Exit")
+    print(DIVIDER)
 
-# keep running until user exits
 while True:
     show_menu()
     choice = input("\nSelect option (1-5): ").strip()
 
     if choice == "5":
-        print("\nExiting. Bye.\n")
+        print("\nDone.\n")
         break
 
     if choice in ("1", "2", "3", "4"):
         host = input("Enter host (e.g. google.com): ").strip()
-    
+        if not host:
+            print("[-] No host entered.")
+            continue
+
     if choice == "1":
         ping(host)
     elif choice == "2":
