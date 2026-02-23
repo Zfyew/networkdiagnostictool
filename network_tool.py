@@ -1,5 +1,5 @@
 # Network Diagnostic Tool
-# v4: added port scanner
+# v5: single menu that loops so you can run multiple checks without restarting
 
 import subprocess
 import platform
@@ -78,25 +78,36 @@ def port_scan(host):
     except socket.gaierror:
         print(f"[-] Could not resolve {host}.")
 
-print("\n==============================")
-print("   NETWORK DIAGNOSTIC TOOL   ")
-print("==============================")
-print("1. Ping")
-print("2. DNS Lookup")
-print("3. Traceroute")
-print("4. Port Scanner")
-print("==============================")
+def show_menu():
+    print("\n==============================")
+    print("   NETWORK DIAGNOSTIC TOOL   ")
+    print("==============================")
+    print("1. Ping")
+    print("2. DNS Lookup")
+    print("3. Traceroute")
+    print("4. Port Scanner")
+    print("5. Exit")
+    print("==============================")
 
-choice = input("\nSelect option (1-4): ")
-host = input("Enter host (e.g. google.com): ")
+# keep running until user exits
+while True:
+    show_menu()
+    choice = input("\nSelect option (1-5): ").strip()
 
-if choice == "1":
-    ping(host)
-elif choice == "2":
-    dns_lookup(host)
-elif choice == "3":
-    traceroute(host)
-elif choice == "4":
-    port_scan(host)
-else:
-    print("[-] Invalid option.")
+    if choice == "5":
+        print("\nExiting. Bye.\n")
+        break
+
+    if choice in ("1", "2", "3", "4"):
+        host = input("Enter host (e.g. google.com): ").strip()
+    
+    if choice == "1":
+        ping(host)
+    elif choice == "2":
+        dns_lookup(host)
+    elif choice == "3":
+        traceroute(host)
+    elif choice == "4":
+        port_scan(host)
+    else:
+        print("[-] Invalid option.")
